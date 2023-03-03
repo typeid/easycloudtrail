@@ -13,7 +13,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/cloudtrail/cloudtrailiface"
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/aws/aws-sdk-go/service/sts/stsiface"
-	_ "github.com/golang/mock/mockgen/model" //revive:disable:blank-imports used for the mockgen generation
 )
 
 const (
@@ -28,9 +27,9 @@ type Client struct {
 	CloudTrailClient cloudtrailiface.CloudTrailAPI
 }
 
-// NewClient creates a new client and is used when we already know the secrets and region,
+// newClient creates a new client and is used when we already know the secrets and region,
 // without any need to do any lookup.
-func NewClient(accessID, accessSecret, token, region string) (Client, error) {
+func newClient(accessID, accessSecret, token, region string) (Client, error) {
 	awsConfig := &aws.Config{
 		Region:                        aws.String(region),
 		Credentials:                   credentials.NewStaticCredentials(accessID, accessSecret, token),
@@ -71,7 +70,7 @@ func (c *Client) AssumeRole(roleARN, region string) (Client, error) {
 	if region == "" {
 		region = c.Region
 	}
-	return NewClient(*out.Credentials.AccessKeyId,
+	return newClient(*out.Credentials.AccessKeyId,
 		*out.Credentials.SecretAccessKey,
 		*out.Credentials.SessionToken,
 		region)
@@ -87,27 +86,33 @@ func containsEvent(e *cloudtrail.Event, events []*cloudtrail.Event) bool {
 	return false
 }
 
-// GetAWSClient will retrieve the AwsClient from the 'aws' package
 func GetAWSClient() (Client, error) {
-	awsAccessKeyID, hasAwsAccessKeyID := os.LookupEnv("AWS_ACCESS_KEY_ID")
-	awsSecretAccessKey, hasAwsSecretAccessKey := os.LookupEnv("AWS_SECRET_ACCESS_KEY")
-	awsSessionToken, hasAwsSessionToken := os.LookupEnv("AWS_SESSION_TOKEN")
-	awsDefaultRegion, hasAwsDefaultRegion := os.LookupEnv("AWS_DEFAULT_REGION")
-	if !hasAwsAccessKeyID || !hasAwsSecretAccessKey {
-		return Client{}, fmt.Errorf("one of the required envvars in the list '(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)' is missing")
-	}
-	if !hasAwsSessionToken {
-		fmt.Println("AWS_SESSION_TOKEN not provided, but is not required ")
-	}
-	if !hasAwsDefaultRegion {
-		awsDefaultRegion = "us-east-1"
-	}
-
-	return NewClient(awsAccessKeyID, awsSecretAccessKey, awsSessionToken, awsDefaultRegion)
+	return GetAWSClientWithRegion("")
 }
 
-func (c *Client) GetCloudTrailEvents() {
-	input := &cloudtrail.LookupEventsInput{EndTime: aws.Time(time.Now()), LookupAttributes: []*cloudtrail.LookupAttribute{{AttributeKey: aws.String("ReadOnly"), AttributeValue: aws.String("false")}}}
+func GetAWSClientWithRegion(awsRegion string) (Client, error) {
+
+	if awsRegion == "" {
+		var hasAwsDefaultRegion bool
+		awsRegion, hasAwsDefaultRegion = os.LookupEnv("AWS_DEFAULT_REGION")
+		if !hasAwsDefaultRegion {
+			awsRegion = "us-east-1"
+		}
+	}
+
+	sess, err := session.NewSession(&aws.Config{Region: aws.String(awsRegion)})
+	if err != nil {
+		return Client{}, err
+	}
+
+	return Client{
+		Region:           *aws.String(awsRegion),
+		CloudTrailClient: cloudtrail.New(sess),
+	}, nil
+}
+
+func (c *Client) GetCloudTrailEvents(startTime time.Time) {
+	input := &cloudtrail.LookupEventsInput{StartTime: aws.Time(startTime), EndTime: aws.Time(time.Now()), LookupAttributes: []*cloudtrail.LookupAttribute{{AttributeKey: aws.String("ReadOnly"), AttributeValue: aws.String("false")}}}
 	resp, err := c.CloudTrailClient.LookupEvents(input)
 	if err != nil {
 		fmt.Println("Got error calling CreateTrail:")
@@ -116,23 +121,18 @@ func (c *Client) GetCloudTrailEvents() {
 	}
 
 	for _, event := range resp.Events {
-		if aws.StringValue(event.Username) != "root" { //not in whitelist
+		if aws.StringValue(event.Username) != "test" { //not in whitelist
 			// fmt.Println("Event:")
 			// fmt.Println(aws.StringValue(event.CloudTrailEvent))
-			fmt.Println("")
-			fmt.Println("Name    ", aws.StringValue(event.EventName))
-			fmt.Println("ID:     ", aws.StringValue(event.EventId))
-			fmt.Println("Time:   ", aws.TimeValue(event.EventTime))
-			fmt.Println("User:   ", aws.StringValue(event.Username))
+			fmt.Println(aws.StringValue(event.EventName), "| ", aws.TimeValue(event.EventTime), "| User:", aws.StringValue(event.Username))
 
-			fmt.Println("Resources:")
+			// fmt.Println("Resources:")
 
-			for _, resource := range event.Resources {
-				fmt.Println("  Name:", aws.StringValue(resource.ResourceName))
-				fmt.Println("  Type:", aws.StringValue(resource.ResourceType))
-			}
-
-			fmt.Println("")
+			// for _, resource := range event.Resources {
+			// 	fmt.Println("  Name:", aws.StringValue(resource.ResourceName))
+			// 	fmt.Println("  Type:", aws.StringValue(resource.ResourceType))
+			// }
 		}
 	}
+
 }

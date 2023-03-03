@@ -1,18 +1,13 @@
 package cmd
 
 import (
-	"srep-cloudtrail/cmd/history"
-
 	"github.com/spf13/cobra"
 )
 
 var (
-	// Flags
-	direct bool
-
 	rootCmd = &cobra.Command{
 		Use:   "cloudtrailctl",
-		Short: "A util to quickly find changes made by customers on managed OpenShift clusters running on AWS.",
+		Short: "Command line tool to quickly find changes made by customers on managed OpenShift clusters running on AWS.",
 	}
 )
 
@@ -22,7 +17,7 @@ func Execute() error {
 
 func init() {
 
-	rootCmd.PersistentFlags().BoolVarP(&direct, "direct", "d", false, "direct aws account (no jumproles)")
+	rootCmd.PersistentFlags().BoolP("direct", "d", false, "direct aws account (no jumproles)")
 
-	rootCmd.AddCommand(history.HistoryCmd)
+	rootCmd.AddCommand(historyCmd)
 }
