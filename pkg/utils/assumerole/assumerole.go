@@ -2,37 +2,32 @@ package assumerole
 
 import (
 	"fmt"
-	"os"
 
 	"srep-cloudtrail/pkg/utils/aws"
 	"srep-cloudtrail/pkg/utils/ocm"
 )
 
+const (
+	RhSreCcsAccessRolename   = "arn:aws:iam::snip:role/RH-SRE-CCS-Access"
+	RhTechnicalSupportAccess = "arn:aws:iam::snip:role/RH-Technical-Support-Access"
+	// Why? OrganizationAccountAccessRole = "OrganizationAccountAccessRole"
+)
+
 // jumpRoles will return an aws client or an error after trying to jump into
 // support role
-func JumpRoles(initialAwsClient *aws.Client, clusterID string, region string) (aws.Client, error) {
+func JumpRoles(initialAwsClient *aws.Client, clusterID string, region string) (*aws.Client, error) {
 
 	ocmClient, err := ocm.New()
 	if err != nil {
-		return aws.Client{}, fmt.Errorf("could not initialize ocm client: %w", err)
+		return nil, fmt.Errorf("could not initialize ocm client: %w", err)
 	}
 
-	cssJumprole, ok := os.LookupEnv("CAD_AWS_CSS_JUMPROLE")
-	if !ok {
-		return aws.Client{}, fmt.Errorf("CAD_AWS_CSS_JUMPROLE is missing")
-	}
-
-	supportRole, ok := os.LookupEnv("CAD_AWS_SUPPORT_JUMPROLE")
-	if !ok {
-		return aws.Client{}, fmt.Errorf("CAD_AWS_SUPPORT_JUMPROLE is missing")
-	}
-
-	customerAwsClient, err := AssumeSupportRoleChain(initialAwsClient, &ocmClient, clusterID, cssJumprole, supportRole, region)
+	customerAwsClient, err := AssumeSupportRoleChain(initialAwsClient, &ocmClient, clusterID, RhSreCcsAccessRolename, RhTechnicalSupportAccess, region)
 	if err != nil {
-		return aws.Client{}, nil
+		return nil, err
 	}
 
-	return customerAwsClient, nil
+	return &customerAwsClient, nil
 }
 
 // AssumeSupportRoleChain will jump between the current aws.Client to the customers aws.Client

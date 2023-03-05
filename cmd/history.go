@@ -33,16 +33,16 @@ func parseDurationToUTC(input string) (time.Time, error) {
 	return time.Now().UTC().Add(-duration), nil
 }
 
-func getAssumeRoleAwsClient(clusterID string, region string) (aws.Client, error) {
+func getAssumeRoleAwsClient(clusterID string, region string, profile string) (*aws.Client, error) {
 
-	initialAwsClient, err := aws.GetAWSClient()
+	initialAwsClient, err := aws.GetAWSClient(profile)
 	if err != nil {
-		return aws.Client{}, err
+		return nil, err
 	}
 
-	customerAwsClient, err := assumerole.JumpRoles(&initialAwsClient, clusterID, region)
+	customerAwsClient, err := assumerole.JumpRoles(initialAwsClient, clusterID, region)
 	if err != nil {
-		return aws.Client{}, err
+		return nil, err
 	}
 
 	return customerAwsClient, nil
@@ -52,6 +52,7 @@ func run(cmd *cobra.Command, args []string) error {
 	direct, _ := cmd.Flags().GetBool("direct")
 	since, _ := cmd.Flags().GetString("since")
 	clusterID, _ := cmd.Flags().GetString("cluster-id")
+	profile, _ := cmd.Flags().GetString("profile")
 
 	if !direct && clusterID == "" {
 		return fmt.Errorf("Invalid usage: cluster-id flag is required when the direct flag is not set")
@@ -64,14 +65,14 @@ func run(cmd *cobra.Command, args []string) error {
 
 	fmt.Println("Checking history since", startTime, "- direct:", direct)
 
-	var awsClient aws.Client
+	var awsClient *aws.Client
 	if direct {
-		awsClient, err = aws.GetAWSClient()
+		awsClient, err = aws.GetAWSClient(profile)
 		if err != nil {
 			return fmt.Errorf("could not initialize aws client: %w", err)
 		}
 	} else {
-		awsClient, err = getAssumeRoleAwsClient(clusterID, "")
+		awsClient, err = getAssumeRoleAwsClient(clusterID, "", profile)
 		if err != nil {
 			return fmt.Errorf("could not initialize aws client: %w", err)
 		}
@@ -87,12 +88,12 @@ func run(cmd *cobra.Command, args []string) error {
 		fmt.Println("Fetching us-east-1 IAM events...")
 
 		if direct {
-			awsClient, err = aws.GetAWSClientWithRegion("us-east-1")
+			awsClient, err = aws.GetAWSClientWithRegion("us-east-1", profile)
 			if err != nil {
 				return fmt.Errorf("could not initialize aws client: %w", err)
 			}
 		} else {
-			awsClient, err = getAssumeRoleAwsClient(clusterID, "us-east-1")
+			awsClient, err = getAssumeRoleAwsClient(clusterID, "us-east-1", profile)
 			if err != nil {
 				return fmt.Errorf("could not initialize aws client: %w", err)
 			}

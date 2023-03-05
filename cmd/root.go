@@ -17,6 +17,7 @@ func Execute() error {
 
 func init() {
 
+	rootCmd.PersistentFlags().StringP("profile", "p", "default", "aws profile to use")
 	rootCmd.PersistentFlags().BoolP("direct", "d", false, "direct aws account (no jumproles)")
 
 	rootCmd.AddCommand(historyCmd)

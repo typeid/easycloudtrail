@@ -29,7 +29,7 @@ type Client struct {
 
 // newClient creates a new client and is used when we already know the secrets and region,
 // without any need to do any lookup.
-func newClient(accessID, accessSecret, token, region string) (Client, error) {
+func newClient(accessID string, accessSecret string, token string, region string) (Client, error) {
 	awsConfig := &aws.Config{
 		Region:                        aws.String(region),
 		Credentials:                   credentials.NewStaticCredentials(accessID, accessSecret, token),
@@ -40,12 +40,12 @@ func newClient(accessID, accessSecret, token, region string) (Client, error) {
 		},
 	}
 
-	s, err := session.NewSession(awsConfig)
+	s, err := session.NewSessionWithOptions(session.Options{Config: *awsConfig})
 	if err != nil {
 		return Client{}, err
 	}
 
-	cloudTrailSess, err := session.NewSession(awsConfig)
+	cloudTrailSess, err := session.NewSessionWithOptions(session.Options{Config: *awsConfig})
 	if err != nil {
 		return Client{}, err
 	}
@@ -58,10 +58,10 @@ func newClient(accessID, accessSecret, token, region string) (Client, error) {
 }
 
 // AssumeRole returns you a new client in the account specified in the roleARN
-func (c *Client) AssumeRole(roleARN, region string) (Client, error) {
+func (c *Client) AssumeRole(roleARN string, region string) (Client, error) {
 	input := &sts.AssumeRoleInput{
 		RoleArn:         &roleARN,
-		RoleSessionName: aws.String("srep-cloudtrail-check"),
+		RoleSessionName: aws.String("CAD"),
 	}
 	out, err := c.StsClient.AssumeRole(input)
 	if err != nil {
@@ -86,12 +86,11 @@ func containsEvent(e *cloudtrail.Event, events []*cloudtrail.Event) bool {
 	return false
 }
 
-func GetAWSClient() (Client, error) {
-	return GetAWSClientWithRegion("")
+func GetAWSClient(profile string) (*Client, error) {
+	return GetAWSClientWithRegion("", profile)
 }
 
-func GetAWSClientWithRegion(awsRegion string) (Client, error) {
-
+func GetAWSClientWithRegion(awsRegion string, profile string) (*Client, error) {
 	if awsRegion == "" {
 		var hasAwsDefaultRegion bool
 		awsRegion, hasAwsDefaultRegion = os.LookupEnv("AWS_DEFAULT_REGION")
@@ -100,14 +99,20 @@ func GetAWSClientWithRegion(awsRegion string) (Client, error) {
 		}
 	}
 
-	sess, err := session.NewSession(&aws.Config{Region: aws.String(awsRegion)})
+	cloudTrailSession, err := session.NewSessionWithOptions(session.Options{Config: aws.Config{Region: aws.String(awsRegion)}, Profile: profile})
 	if err != nil {
-		return Client{}, err
+		return nil, err
 	}
 
-	return Client{
+	stsSession, err := session.NewSessionWithOptions(session.Options{Config: aws.Config{Region: aws.String(awsRegion)}, Profile: profile})
+	if err != nil {
+		return nil, err
+	}
+
+	return &Client{
 		Region:           *aws.String(awsRegion),
-		CloudTrailClient: cloudtrail.New(sess),
+		CloudTrailClient: cloudtrail.New(cloudTrailSession),
+		StsClient:        sts.New(stsSession),
 	}, nil
 }
 
