@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"srep-cloudtrail/cmd"
+	"easycloudtrail/cmd"
 )
 
 func main() {

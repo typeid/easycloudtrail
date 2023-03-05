@@ -6,7 +6,7 @@ all: build test lint
 
 .PHONY: build
 build:
-	go build -o bin/cloudtrailctl main.go
+	go build -o bin/easycloudtrail main.go
 
 .PHONY: test
 test:

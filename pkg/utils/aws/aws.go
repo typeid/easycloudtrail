@@ -3,11 +3,10 @@ package aws
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/client"
-	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudtrail"
 	"github.com/aws/aws-sdk-go/service/cloudtrail/cloudtrailiface"
@@ -15,65 +14,11 @@ import (
 	"github.com/aws/aws-sdk-go/service/sts/stsiface"
 )
 
-const (
-	maxRetries        int = 3
-	backoffUpperLimit     = 5 * time.Minute
-)
-
 // Client is a representation of the AWS Client
 type Client struct {
 	Region           string
 	StsClient        stsiface.STSAPI
 	CloudTrailClient cloudtrailiface.CloudTrailAPI
-}
-
-// newClient creates a new client and is used when we already know the secrets and region,
-// without any need to do any lookup.
-func newClient(accessID string, accessSecret string, token string, region string) (Client, error) {
-	awsConfig := &aws.Config{
-		Region:                        aws.String(region),
-		Credentials:                   credentials.NewStaticCredentials(accessID, accessSecret, token),
-		CredentialsChainVerboseErrors: aws.Bool(true),
-		Retryer: client.DefaultRetryer{
-			NumMaxRetries:    maxRetries,
-			MinThrottleDelay: 2 * time.Second,
-		},
-	}
-
-	s, err := session.NewSessionWithOptions(session.Options{Config: *awsConfig})
-	if err != nil {
-		return Client{}, err
-	}
-
-	cloudTrailSess, err := session.NewSessionWithOptions(session.Options{Config: *awsConfig})
-	if err != nil {
-		return Client{}, err
-	}
-
-	return Client{
-		Region:           *aws.String(region),
-		StsClient:        sts.New(s),
-		CloudTrailClient: cloudtrail.New(cloudTrailSess),
-	}, nil
-}
-
-// AssumeRole returns you a new client in the account specified in the roleARN
-func (c *Client) AssumeRole(roleARN string, region string) (Client, error) {
-	input := &sts.AssumeRoleInput{
-		RoleArn:         &roleARN,
-		RoleSessionName: aws.String("CAD"),
-	}
-	out, err := c.StsClient.AssumeRole(input)
-	if err != nil {
-		return Client{}, err
-	}
-	if region == "" {
-		region = c.Region
-	}
-	return newClient(*out.Credentials.AccessKeyId,
-		*out.Credentials.SecretAccessKey,
-		*out.Credentials.SessionToken,
-		region)
 }
 
 // containsEvent is a little helper function that checks if the list contains an event
@@ -86,11 +31,11 @@ func containsEvent(e *cloudtrail.Event, events []*cloudtrail.Event) bool {
 	return false
 }
 
-func GetAWSClient(profile string) (*Client, error) {
-	return GetAWSClientWithRegion("", profile)
+func GetAWSClient(awsRegion string) (*Client, error) {
+	return GetAWSClientWithRegion(awsRegion)
 }
 
-func GetAWSClientWithRegion(awsRegion string, profile string) (*Client, error) {
+func GetAWSClientWithRegion(awsRegion string) (*Client, error) {
 	if awsRegion == "" {
 		var hasAwsDefaultRegion bool
 		awsRegion, hasAwsDefaultRegion = os.LookupEnv("AWS_DEFAULT_REGION")
@@ -99,12 +44,12 @@ func GetAWSClientWithRegion(awsRegion string, profile string) (*Client, error) {
 		}
 	}
 
-	cloudTrailSession, err := session.NewSessionWithOptions(session.Options{Config: aws.Config{Region: aws.String(awsRegion)}, Profile: profile})
+	cloudTrailSession, err := session.NewSessionWithOptions(session.Options{Config: aws.Config{Region: aws.String(awsRegion)}})
 	if err != nil {
 		return nil, err
 	}
 
-	stsSession, err := session.NewSessionWithOptions(session.Options{Config: aws.Config{Region: aws.String(awsRegion)}, Profile: profile})
+	stsSession, err := session.NewSessionWithOptions(session.Options{Config: aws.Config{Region: aws.String(awsRegion)}})
 	if err != nil {
 		return nil, err
 	}
@@ -116,28 +61,41 @@ func GetAWSClientWithRegion(awsRegion string, profile string) (*Client, error) {
 	}, nil
 }
 
-func (c *Client) GetCloudTrailEvents(startTime time.Time) {
+func matchesRegexpList(value string, regexpList []string) (bool, error) {
+	for _, regexpI := range regexpList {
+		matched, err := regexp.MatchString(regexpI, value)
+		if err != nil {
+			return false, err
+		}
+
+		if matched {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (c *Client) GetCloudTrailEvents(startTime time.Time, raw bool, whitelistedUsers []string) error {
 	input := &cloudtrail.LookupEventsInput{StartTime: aws.Time(startTime), EndTime: aws.Time(time.Now()), LookupAttributes: []*cloudtrail.LookupAttribute{{AttributeKey: aws.String("ReadOnly"), AttributeValue: aws.String("false")}}}
 	resp, err := c.CloudTrailClient.LookupEvents(input)
 	if err != nil {
-		fmt.Println("Got error calling CreateTrail:")
-		fmt.Println(err.Error())
-		return
+		return err
 	}
 
 	for _, event := range resp.Events {
-		if aws.StringValue(event.Username) != "test" { //not in whitelist
-			// fmt.Println("Event:")
-			// fmt.Println(aws.StringValue(event.CloudTrailEvent))
-			fmt.Println(aws.StringValue(event.EventName), "| ", aws.TimeValue(event.EventTime), "| User:", aws.StringValue(event.Username))
+		whitelistMatched, err := matchesRegexpList(aws.StringValue(event.Username), whitelistedUsers)
+		if err != nil {
+			return err
+		}
 
-			// fmt.Println("Resources:")
-
-			// for _, resource := range event.Resources {
-			// 	fmt.Println("  Name:", aws.StringValue(resource.ResourceName))
-			// 	fmt.Println("  Type:", aws.StringValue(resource.ResourceType))
-			// }
+		if !whitelistMatched { // Event not in whitelist
+			if !raw {
+				fmt.Println(aws.StringValue(event.EventName), "| ", aws.TimeValue(event.EventTime), "| User:", aws.StringValue(event.Username))
+			} else {
+				fmt.Println("")
+				fmt.Println(aws.StringValue(event.CloudTrailEvent))
+			}
 		}
 	}
-
+	return nil
 }

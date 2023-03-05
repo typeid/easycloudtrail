@@ -6,8 +6,8 @@ import (
 
 var (
 	rootCmd = &cobra.Command{
-		Use:   "cloudtrailctl",
-		Short: "Command line tool to quickly find changes made by customers on managed OpenShift clusters running on AWS.",
+		Use:   "easycloudtrail",
+		Short: "Command line tool to query AWS cloudtrail with enhanced parameters",
 	}
 )
 
@@ -16,9 +16,5 @@ func Execute() error {
 }
 
 func init() {
-
-	rootCmd.PersistentFlags().StringP("profile", "p", "default", "aws profile to use")
-	rootCmd.PersistentFlags().BoolP("direct", "d", false, "direct aws account (no jumproles)")
-
-	rootCmd.AddCommand(historyCmd)
+	rootCmd.AddCommand(writeHistoryCmd)
 }
