@@ -22,3 +22,7 @@ build_all:
 .PHONY: lint
 lint:
 	golangci-lint run
+
+.PHONY: install
+install:
+	go install

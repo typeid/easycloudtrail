@@ -156,7 +156,7 @@ linters-settings:
       shadow:
         # Whether to be strict about shadowing; can be noisy.
         # Default: false
-        strict: true
+        strict: false
 
   nakedret:
     # Make an issue if func has more lines of code than this setting, and it has naked returns.
@@ -211,11 +211,8 @@ linters:
     - execinquery # checks query string in Query function which reads your Go src files and warning it finds
     - exhaustive # checks exhaustiveness of enum switch statements
     - exportloopref # checks for pointers to enclosing loop variables
-    - forbidigo # forbids identifiers
     - funlen # tool for detection of long functions
     - gocheckcompilerdirectives # validates go compiler directive comments (//go:)
-    - gochecknoglobals # checks that no global variables exist
-    - gochecknoinits # checks that no init functions are present in Go code
     - gocognit # computes and checks the cognitive complexity of functions
     - goconst # finds repeated strings that could be replaced by a constant
     - gocritic # provides diagnostics that check for bugs, performance and style issues
@@ -289,6 +286,9 @@ linters:
     #- tagliatelle # checks the struct tags
     #- thelper # detects golang test helpers without t.Helper() call and checks the consistency of test helpers
     #- wsl # [too strict and mostly code is not more readable] whitespace linter forces you to use empty lines
+    #- forbidigo # forbids identifiers, doesn't allow printing to stdout
+    #- gochecknoinits # checks that no init functions are present in Go code
+    #- gochecknoglobals # checks that no global variables exist
 
     ## deprecated
     #- deadcode # [deprecated, replaced by unused] finds unused code
