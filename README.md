@@ -9,13 +9,13 @@ Easy to use command line tool to quickly query cloudtrail events using filter li
 The following query will return all write cloudtrail events excluding those performed by `jason` or by users containing `peter12` for the last 72 hours. The events returned contain the `eu-west-1` events as well as the global AWS events from `us-east-1`:
 
 ```bash
-easycloudtrail write-history --since 72h --region eu-west-1 -w peter12*,jason
+easycloudtrail write-history --since 72h --region eu-west-1 -i peter12*,jason
 ```
 
 The following query will display the events in a raw format:
 
 ```bash
-easycloudtrail write-history --since 72h --region eu-west-1 -w peter12*,jason --raw
+easycloudtrail write-history --since 72h --region eu-west-1 -i peter12*,jason --raw
 ```
 
 For further information, see the `--help` option.
@@ -31,5 +31,5 @@ Prerequisites:
 Installation:
 
 ```
-go install .
+make install
 ```
