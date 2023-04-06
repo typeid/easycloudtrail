@@ -36,6 +36,7 @@ func (c *Client) GetCloudTrailEvents(startTime time.Time, raw bool, ignoredUsers
 
 		input.NextToken = lookupOutput.NextToken
 	}
+	print("\n")
 
 	for _, event := range allEvents {
 		ignoredUserMatched, err := utils.MatchesRegexpList(aws.StringValue(event.Username), ignoredUsers)
