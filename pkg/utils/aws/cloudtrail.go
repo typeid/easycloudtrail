@@ -38,12 +38,27 @@ func (c *Client) GetCloudTrailEvents(startTime time.Time, raw bool, ignoredUsers
 	}
 	print("\n")
 
+	// Reverse order to have newest events printed last
+	utils.ReverseSlice(allEvents)
+
 	for _, event := range allEvents {
+
+		userDetails, err := extractUserDetails(event.CloudTrailEvent)
+		if err != nil {
+			return err
+		}
+		sessionIssuerUsername := userDetails.UserIdentity.SessionContext.SessionIssuer.UserName
+
+		ignoredARNMatched, err := utils.MatchesRegexpList(sessionIssuerUsername, ignoredUsers)
+		if err != nil {
+			return err
+		}
+
 		ignoredUserMatched, err := utils.MatchesRegexpList(aws.StringValue(event.Username), ignoredUsers)
 		if err != nil {
 			return err
 		}
-		if ignoredUserMatched {
+		if ignoredUserMatched || ignoredARNMatched {
 			// Skip entry
 			continue
 		}
@@ -52,7 +67,7 @@ func (c *Client) GetCloudTrailEvents(startTime time.Time, raw bool, ignoredUsers
 			fmt.Printf("\n")
 			fmt.Println(aws.StringValue(event.CloudTrailEvent))
 		} else {
-			printEventNonRaw(event)
+			printEventNonRaw(event, sessionIssuerUsername)
 			if err != nil {
 				return err
 			}
@@ -61,12 +76,7 @@ func (c *Client) GetCloudTrailEvents(startTime time.Time, raw bool, ignoredUsers
 	return nil
 }
 
-func printEventNonRaw(event *cloudtrail.Event) error {
-	userDetails, err := extractUserDetails(event.CloudTrailEvent)
-	if err != nil {
-		return err
-	}
-	sessionIssuerUsername := userDetails.UserIdentity.SessionContext.SessionIssuer.UserName
+func printEventNonRaw(event *cloudtrail.Event, sessionIssuerUsername string) error {
 
 	if sessionIssuerUsername == "" {
 		fmt.Printf(
