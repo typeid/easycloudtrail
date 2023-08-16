@@ -22,22 +22,19 @@ func (c *Client) PrintCloudTrailWriteEvents(startTime time.Time, raw bool, ignor
 		},
 	}
 
-	return c.printCloudTrailEvents(startTime, raw, ignoredUsers, lookupInput, func(event *cloudtrail.Event, sessionIssuerUsername string) (bool, error) {
+	return c.printCloudTrailEvents(startTime, raw, ignoredUsers, lookupInput, func(event *cloudtrail.Event, sessionIssuerUsername string, rawEvent *CloudTrailEventRaw) bool {
 		// Add write-only filtering condition
-		if aws.StringValue(event.ReadOnly) == "false" {
-			return true, nil
-		}
-		return false, nil
+		return rawEvent.UserIdentity.Type != "AWSService"
 	})
 }
 
 func (c *Client) PrintCloudTrailForbiddenEvents(startTime time.Time, raw bool, ignoredUsers []string) error {
-	return c.printCloudTrailEvents(startTime, raw, ignoredUsers, nil, func(event *cloudtrail.Event, sessionIssuerUsername string) (bool, error) {
-		return hasUnauthorizedResponse(*event.CloudTrailEvent), nil
+	return c.printCloudTrailEvents(startTime, raw, ignoredUsers, nil, func(event *cloudtrail.Event, sessionIssuerUsername string, rawEvent *CloudTrailEventRaw) bool {
+		return hasUnauthorizedResponse(*event.CloudTrailEvent)
 	})
 }
 
-func (c *Client) printCloudTrailEvents(startTime time.Time, raw bool, ignoredUsers []string, lookupInput *cloudtrail.LookupEventsInput, postLookupFilterFunc func(event *cloudtrail.Event, sessionIssuerUsername string) (bool, error)) error {
+func (c *Client) printCloudTrailEvents(startTime time.Time, raw bool, ignoredUsers []string, lookupInput *cloudtrail.LookupEventsInput, postLookupFilterFunc func(event *cloudtrail.Event, sessionIssuerUsername string, rawEvent *CloudTrailEventRaw) bool) error {
 
 	if lookupInput == nil {
 		// Default to querying everything
@@ -92,10 +89,7 @@ func (c *Client) printCloudTrailEvents(startTime time.Time, raw bool, ignoredUse
 			continue
 		}
 
-		filtered, err := postLookupFilterFunc(event, sessionIssuerUsername)
-		if err != nil {
-			return err
-		}
+		filtered := postLookupFilterFunc(event, sessionIssuerUsername, userDetails)
 
 		if filtered {
 			if raw {
