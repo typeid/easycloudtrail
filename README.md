@@ -20,6 +20,22 @@ easycloudtrail write-history --since 72h --region eu-west-1 -i peter12*,jason --
 
 For further information, see the `--help` option.
 
+## Permission denied history queries
+
+The following query will return all permission denied cloudtrail events excluding those performed by `jason` or by users containing `peter12` for the last 72 hours. The events returned contain the `eu-west-1` events as well as the global AWS events from `us-east-1`:
+
+```bash
+easycloudtrail permission-denied-history --since 72h --region eu-west-1 -i peter12*,jason
+```
+
+The following query will display the events in a raw format:
+
+```bash
+easycloudtrail permission-denied-history --since 72h --region eu-west-1 -i peter12*,jason --raw
+```
+
+For further information, see the `--help` option.
+
 # Installation
 
 Currently, `easycloudtrail` is only available as self built binary.

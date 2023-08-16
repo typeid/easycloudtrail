@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"easycloudtrail/pkg/utils/aws"
 
@@ -12,31 +11,23 @@ import (
 )
 
 var (
-	writeHistoryCmd = &cobra.Command{
-		Use:   "write-history",
-		Short: "Get cloudtrail write events",
-		RunE:  runWriteHistory,
+	permissionDeniedHistoryCmd = &cobra.Command{
+		Use:   "permission-denied-history",
+		Short: "Get cloudtrail permission denied events",
+		RunE:  runPermissionDeniedHistory,
 	}
 )
 
 func init() {
-	writeHistoryCmd.PersistentFlags().
-		StringP("since", "s", "24h", "Since flag. Valid time units are 'ns', 'us' (or 'µs'), 'ms', 's', 'm', 'h'.")
-	writeHistoryCmd.PersistentFlags().String("region", "", "Region to check")
-	writeHistoryCmd.PersistentFlags().BoolP("raw", "r", false, "Show events in raw format")
-	writeHistoryCmd.PersistentFlags().
+	permissionDeniedHistoryCmd.PersistentFlags().
+		StringP("since", "s", "5m", "Since flag. Valid time units are 'ns', 'us' (or 'µs'), 'ms', 's', 'm', 'h'.")
+	permissionDeniedHistoryCmd.PersistentFlags().String("region", "", "Region to check")
+	permissionDeniedHistoryCmd.PersistentFlags().BoolP("raw", "r", false, "Show events in raw format")
+	permissionDeniedHistoryCmd.PersistentFlags().
 		StringP("ignore-users", "i", "", "Users whose write events shall be excluded from the history as comma separated list.") //nolint:lll
 }
 
-func parseDurationToUTC(input string) (time.Time, error) {
-	duration, err := time.ParseDuration(input)
-	if err != nil {
-		return time.Time{}, err
-	}
-	return time.Now().UTC().Add(-duration), nil
-}
-
-func runWriteHistory(cmd *cobra.Command, args []string) error {
+func runPermissionDeniedHistory(cmd *cobra.Command, args []string) error {
 	since, _ := cmd.Flags().GetString("since")
 	region, _ := cmd.Flags().GetString("region")
 	raw, _ := cmd.Flags().GetBool("raw")
@@ -58,7 +49,7 @@ func runWriteHistory(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("could not get caller identity: %w", err)
 	}
 	fmt.Println(
-		"Checking write event history since",
+		"Checking permission denied event history for read/write events since",
 		startTime,
 		"for AWS account",
 		*callerIdentity.Account,
@@ -68,7 +59,7 @@ func runWriteHistory(cmd *cobra.Command, args []string) error {
 
 	fmt.Println("")
 	fmt.Println("Fetching", awsClient.Region, "events...")
-	err = awsClient.PrintCloudTrailWriteEvents(startTime, raw, ignoredUsers)
+	err = awsClient.PrintCloudTrailForbiddenEvents(startTime, raw, ignoredUsers)
 	if err != nil {
 		return err
 	}
@@ -82,7 +73,7 @@ func runWriteHistory(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("could not initialize aws client: %w", err)
 		}
 
-		err = awsClient.PrintCloudTrailWriteEvents(startTime, raw, ignoredUsers)
+		err = awsClient.PrintCloudTrailForbiddenEvents(startTime, raw, ignoredUsers)
 		if err != nil {
 			return err
 		}
