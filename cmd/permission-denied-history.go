@@ -19,9 +19,10 @@ var (
 )
 
 func init() {
+	AddDefaultFlags(permissionDeniedHistoryCmd)
 	// Redefine this flag as we want a different default.
 	permissionDeniedHistoryCmd.PersistentFlags().
-		StringP("since", "s", "5m", "Since flag. Valid time units are 'ns', 'us' (or 'µs'), 'ms', 's', 'm', 'h'.")
+		StringP("since", "s", "1h", "Since flag. Valid time units are 'ns', 'us' (or 'µs'), 'ms', 's', 'm', 'h'.")
 }
 
 func runPermissionDeniedHistory(cmd *cobra.Command, args []string) error {

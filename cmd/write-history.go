@@ -20,6 +20,7 @@ var (
 )
 
 func init() {
+	AddDefaultFlags(writeHistoryCmd)
 	// Redefine this flag as we want a different default.
 	writeHistoryCmd.PersistentFlags().
 		StringP("since", "s", "24h", "Since flag. Valid time units are 'ns', 'us' (or 'µs'), 'ms', 's', 'm', 'h'.")

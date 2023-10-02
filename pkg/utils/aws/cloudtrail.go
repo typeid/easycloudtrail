@@ -108,7 +108,7 @@ func (c *Client) printCloudTrailEvents(startTime time.Time, raw bool, ignoredUse
 }
 
 func hasUnauthorizedResponse(eventMessage string) bool {
-	return strings.Contains(eventMessage, "\"errorCode\": \"Client.UnauthorizedOperation\"")
+	return strings.Contains(eventMessage, "\"errorCode\":\"Client.UnauthorizedOperation\"")
 }
 
 func printEventNonRaw(event *cloudtrail.Event, sessionIssuerUsername string, toggleEventID bool) error {

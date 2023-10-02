@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Toggling eventID in the output
 - Filter out events that have no username or issuer ARN
+- Update permission denied history default to 1 hour
 
 ## [0.0.2] - 2023-08-16
 
