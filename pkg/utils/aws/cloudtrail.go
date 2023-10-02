@@ -12,7 +12,7 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-func (c *Client) PrintCloudTrailWriteEvents(startTime time.Time, raw bool, ignoredUsers []string) error {
+func (c *Client) PrintCloudTrailWriteEvents(startTime time.Time, raw bool, ignoredUsers []string, toggleEventID bool) error {
 
 	lookupInput := &cloudtrail.LookupEventsInput{
 		StartTime: aws.Time(startTime),
@@ -22,19 +22,19 @@ func (c *Client) PrintCloudTrailWriteEvents(startTime time.Time, raw bool, ignor
 		},
 	}
 
-	return c.printCloudTrailEvents(startTime, raw, ignoredUsers, lookupInput, func(event *cloudtrail.Event, sessionIssuerUsername string, rawEvent *CloudTrailEventRaw) bool {
+	return c.printCloudTrailEvents(startTime, raw, ignoredUsers, toggleEventID, lookupInput, func(event *cloudtrail.Event, sessionIssuerUsername string, rawEvent *CloudTrailEventRaw) bool {
 		// Add write-only filtering condition
 		return rawEvent.UserIdentity.Type != "AWSService"
 	})
 }
 
-func (c *Client) PrintCloudTrailForbiddenEvents(startTime time.Time, raw bool, ignoredUsers []string) error {
-	return c.printCloudTrailEvents(startTime, raw, ignoredUsers, nil, func(event *cloudtrail.Event, sessionIssuerUsername string, rawEvent *CloudTrailEventRaw) bool {
+func (c *Client) PrintCloudTrailForbiddenEvents(startTime time.Time, raw bool, ignoredUsers []string, toggleEventID bool) error {
+	return c.printCloudTrailEvents(startTime, raw, ignoredUsers, toggleEventID, nil, func(event *cloudtrail.Event, sessionIssuerUsername string, rawEvent *CloudTrailEventRaw) bool {
 		return hasUnauthorizedResponse(*event.CloudTrailEvent)
 	})
 }
 
-func (c *Client) printCloudTrailEvents(startTime time.Time, raw bool, ignoredUsers []string, lookupInput *cloudtrail.LookupEventsInput, postLookupFilterFunc func(event *cloudtrail.Event, sessionIssuerUsername string, rawEvent *CloudTrailEventRaw) bool) error {
+func (c *Client) printCloudTrailEvents(startTime time.Time, raw bool, ignoredUsers []string, toggleEventID bool, lookupInput *cloudtrail.LookupEventsInput, postLookupFilterFunc func(event *cloudtrail.Event, sessionIssuerUsername string, rawEvent *CloudTrailEventRaw) bool) error {
 
 	if lookupInput == nil {
 		// Default to querying everything
@@ -96,7 +96,7 @@ func (c *Client) printCloudTrailEvents(startTime time.Time, raw bool, ignoredUse
 				fmt.Printf("\n")
 				fmt.Println(aws.StringValue(event.CloudTrailEvent))
 			} else {
-				printEventNonRaw(event, sessionIssuerUsername)
+				printEventNonRaw(event, sessionIssuerUsername, toggleEventID)
 				if err != nil {
 					return err
 				}
@@ -111,22 +111,30 @@ func hasUnauthorizedResponse(eventMessage string) bool {
 	return strings.Contains(eventMessage, "\"errorCode\": \"Client.UnauthorizedOperation\"")
 }
 
-func printEventNonRaw(event *cloudtrail.Event, sessionIssuerUsername string) error {
+func printEventNonRaw(event *cloudtrail.Event, sessionIssuerUsername string, toggleEventID bool) error {
 
-	if sessionIssuerUsername == "" {
-		fmt.Printf(
-			"%s | %s | User: %s\n",
-			aws.StringValue(event.EventName),
-			aws.TimeValue(event.EventTime),
-			aws.StringValue(event.Username))
-	} else {
-		fmt.Printf(
-			"%s | %s | User: %s | ARN: %s \n",
-			aws.StringValue(event.EventName),
-			aws.TimeValue(event.EventTime),
-			aws.StringValue(event.Username),
-			sessionIssuerUsername)
+	if sessionIssuerUsername == "" && aws.StringValue(event.Username) == "" {
+		// Avoid printing "system" events with no user assigned to the action
+		return nil
 	}
+
+	accumulatingString := ""
+	accumulatingString += fmt.Sprintf("%s", aws.StringValue(event.EventName))
+	accumulatingString += fmt.Sprintf(" | %s", aws.TimeValue(event.EventTime))
+
+	if event.Username != nil {
+		accumulatingString += fmt.Sprintf(" | User: %s", aws.StringValue(event.Username))
+	}
+
+	if sessionIssuerUsername != "" {
+		accumulatingString += fmt.Sprintf(" | ARN: %s", sessionIssuerUsername)
+	}
+
+	if toggleEventID {
+		accumulatingString += fmt.Sprintf(" | EventID: %s", aws.StringValue(event.EventId))
+	}
+
+	fmt.Println(accumulatingString)
 
 	return nil
 }

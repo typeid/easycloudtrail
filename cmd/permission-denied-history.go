@@ -19,12 +19,9 @@ var (
 )
 
 func init() {
+	// Redefine this flag as we want a different default.
 	permissionDeniedHistoryCmd.PersistentFlags().
 		StringP("since", "s", "5m", "Since flag. Valid time units are 'ns', 'us' (or 'µs'), 'ms', 's', 'm', 'h'.")
-	permissionDeniedHistoryCmd.PersistentFlags().String("region", "", "Region to check")
-	permissionDeniedHistoryCmd.PersistentFlags().BoolP("raw", "r", false, "Show events in raw format")
-	permissionDeniedHistoryCmd.PersistentFlags().
-		StringP("ignore-users", "i", "", "Users whose write events shall be excluded from the history as comma separated list.") //nolint:lll
 }
 
 func runPermissionDeniedHistory(cmd *cobra.Command, args []string) error {
@@ -33,6 +30,7 @@ func runPermissionDeniedHistory(cmd *cobra.Command, args []string) error {
 	raw, _ := cmd.Flags().GetBool("raw")
 	ignoredUsersParam, _ := cmd.Flags().GetString("ignore-users")
 	ignoredUsers := strings.Split(ignoredUsersParam, ",")
+	toggleEventID, _ := cmd.Flags().GetBool("toggle-event-ids")
 
 	startTime, err := parseDurationToUTC(since)
 	if err != nil {
@@ -59,7 +57,7 @@ func runPermissionDeniedHistory(cmd *cobra.Command, args []string) error {
 
 	fmt.Println("")
 	fmt.Println("Fetching", awsClient.Region, "events...")
-	err = awsClient.PrintCloudTrailForbiddenEvents(startTime, raw, ignoredUsers)
+	err = awsClient.PrintCloudTrailForbiddenEvents(startTime, raw, ignoredUsers, toggleEventID)
 	if err != nil {
 		return err
 	}
@@ -73,7 +71,7 @@ func runPermissionDeniedHistory(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("could not initialize aws client: %w", err)
 		}
 
-		err = awsClient.PrintCloudTrailForbiddenEvents(startTime, raw, ignoredUsers)
+		err = awsClient.PrintCloudTrailForbiddenEvents(startTime, raw, ignoredUsers, toggleEventID)
 		if err != nil {
 			return err
 		}
