@@ -20,12 +20,9 @@ var (
 )
 
 func init() {
+	// Redefine this flag as we want a different default.
 	writeHistoryCmd.PersistentFlags().
 		StringP("since", "s", "24h", "Since flag. Valid time units are 'ns', 'us' (or 'µs'), 'ms', 's', 'm', 'h'.")
-	writeHistoryCmd.PersistentFlags().String("region", "", "Region to check")
-	writeHistoryCmd.PersistentFlags().BoolP("raw", "r", false, "Show events in raw format")
-	writeHistoryCmd.PersistentFlags().
-		StringP("ignore-users", "i", "", "Users whose write events shall be excluded from the history as comma separated list.") //nolint:lll
 }
 
 func parseDurationToUTC(input string) (time.Time, error) {
@@ -42,6 +39,7 @@ func runWriteHistory(cmd *cobra.Command, args []string) error {
 	raw, _ := cmd.Flags().GetBool("raw")
 	ignoredUsersParam, _ := cmd.Flags().GetString("ignore-users")
 	ignoredUsers := strings.Split(ignoredUsersParam, ",")
+	toggleEventID, _ := cmd.Flags().GetBool("toggle-event-ids")
 
 	startTime, err := parseDurationToUTC(since)
 	if err != nil {
@@ -68,7 +66,7 @@ func runWriteHistory(cmd *cobra.Command, args []string) error {
 
 	fmt.Println("")
 	fmt.Println("Fetching", awsClient.Region, "events...")
-	err = awsClient.PrintCloudTrailWriteEvents(startTime, raw, ignoredUsers)
+	err = awsClient.PrintCloudTrailWriteEvents(startTime, raw, ignoredUsers, toggleEventID)
 	if err != nil {
 		return err
 	}
@@ -82,7 +80,7 @@ func runWriteHistory(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("could not initialize aws client: %w", err)
 		}
 
-		err = awsClient.PrintCloudTrailWriteEvents(startTime, raw, ignoredUsers)
+		err = awsClient.PrintCloudTrailWriteEvents(startTime, raw, ignoredUsers, toggleEventID)
 		if err != nil {
 			return err
 		}
