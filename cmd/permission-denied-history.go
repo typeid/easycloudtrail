@@ -25,7 +25,7 @@ func init() {
 		StringP("since", "s", "1h", "Since flag. Valid time units are 'ns', 'us' (or 'µs'), 'ms', 's', 'm', 'h'.")
 }
 
-func runPermissionDeniedHistory(cmd *cobra.Command, args []string) error {
+func runPermissionDeniedHistory(cmd *cobra.Command, _ []string) error {
 	since, _ := cmd.Flags().GetString("since")
 	region, _ := cmd.Flags().GetString("region")
 	raw, _ := cmd.Flags().GetBool("raw")

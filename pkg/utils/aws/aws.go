@@ -7,6 +7,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudtrail"
 	"github.com/aws/aws-sdk-go/service/cloudtrail/cloudtrailiface"
+	"github.com/aws/aws-sdk-go/service/resourcegroupstaggingapi"
+	"github.com/aws/aws-sdk-go/service/resourcegroupstaggingapi/resourcegroupstaggingapiiface"
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/aws/aws-sdk-go/service/sts/stsiface"
 )
@@ -20,6 +22,7 @@ type Client struct {
 	Region           string
 	StsClient        stsiface.STSAPI
 	CloudTrailClient cloudtrailiface.CloudTrailAPI
+	ResourceGroupAPI resourcegroupstaggingapiiface.ResourceGroupsTaggingAPIAPI
 }
 
 func GetAWSClient(awsRegion string) (*Client, error) {
@@ -35,14 +38,7 @@ func GetAWSClientWithRegion(awsRegion string) (*Client, error) {
 		}
 	}
 
-	cloudTrailSession, err := session.NewSessionWithOptions(
-		session.Options{Config: aws.Config{Region: aws.String(awsRegion)}},
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	stsSession, err := session.NewSessionWithOptions(
+	session, err := session.NewSessionWithOptions(
 		session.Options{Config: aws.Config{Region: aws.String(awsRegion)}},
 	)
 	if err != nil {
@@ -51,7 +47,8 @@ func GetAWSClientWithRegion(awsRegion string) (*Client, error) {
 
 	return &Client{
 		Region:           *aws.String(awsRegion),
-		CloudTrailClient: cloudtrail.New(cloudTrailSession),
-		StsClient:        sts.New(stsSession),
+		CloudTrailClient: cloudtrail.New(session),
+		StsClient:        sts.New(session),
+		ResourceGroupAPI: resourcegroupstaggingapi.New(session),
 	}, nil
 }
