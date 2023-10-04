@@ -18,8 +18,7 @@ func Execute() error {
 func AddDefaultFlags(cmd *cobra.Command) {
 	cmd.PersistentFlags().String("region", "", "Region to check")
 	cmd.PersistentFlags().BoolP("raw", "r", false, "Show events in raw format")
-	cmd.PersistentFlags().
-		StringP("ignore-users", "i", "", "Users whose write events shall be excluded from the history as comma separated list.") //nolint:lll
+	cmd.PersistentFlags().StringP("ignore-users", "i", "", "Users whose write events shall be excluded from the history as comma separated list.") //nolint:lll
 	cmd.PersistentFlags().BoolP("toggle-event-ids", "", false, "Show event IDs in the output.")
 }
 
