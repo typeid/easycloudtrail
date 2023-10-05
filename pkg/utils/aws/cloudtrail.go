@@ -53,7 +53,8 @@ func (c *Client) PrintCloudTrailWriteEvents(
 			StartTime: aws.Time(startTime),
 			EndTime:   aws.Time(time.Now()),
 			LookupAttributes: []*cloudtrail.LookupAttribute{
-				{AttributeKey: aws.String("ResourceName"), AttributeValue: &resourceCopy},
+				{AttributeKey: aws.String("ResourceName"), AttributeValue: &resourceCopy.Name},
+				{AttributeKey: aws.String("ReadOnly"), AttributeValue: aws.String("false")},
 			},
 		}
 
