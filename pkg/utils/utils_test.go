@@ -1,8 +1,6 @@
-package utils_test
+package utils
 
 import (
-	"easycloudtrail/pkg/utils"
-
 	"testing"
 )
 
@@ -10,7 +8,7 @@ import (
 func TestDoesntMatchesRegexpList(t *testing.T) {
 	user := "root"
 	regexpList := []string{"test,william,john"}
-	matches, _ := utils.MatchesRegexpList(user, regexpList)
+	matches, _ := MatchesRegexpList(user, regexpList)
 
 	if matches {
 		t.Fail()
@@ -21,7 +19,7 @@ func TestDoesntMatchesRegexpList(t *testing.T) {
 func TestDoesntMatchesRegexpList2(t *testing.T) {
 	user := "root"
 	regexpList := []string{}
-	matches, _ := utils.MatchesRegexpList(user, regexpList)
+	matches, _ := MatchesRegexpList(user, regexpList)
 
 	if matches {
 		t.Fail()
@@ -32,7 +30,7 @@ func TestDoesntMatchesRegexpList2(t *testing.T) {
 func TestDoesntMatchesRegexpList3(t *testing.T) {
 	user := "root"
 	regexpList := []string{""}
-	matches, _ := utils.MatchesRegexpList(user, regexpList)
+	matches, _ := MatchesRegexpList(user, regexpList)
 
 	if matches {
 		t.Fail()
