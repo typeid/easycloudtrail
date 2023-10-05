@@ -85,7 +85,7 @@ func runWriteHistory(cmd *cobra.Command, _ []string) error {
 
 	if awsClient.Region != aws.DefaultRegion {
 		fmt.Println("")
-		fmt.Println("Fetching IAM events from", aws.DefaultRegion)
+		fmt.Printf("Fetching AWS global events from %s...\n", aws.DefaultRegion)
 
 		awsClient, err = aws.GetAWSClientWithRegion(aws.DefaultRegion)
 		if err != nil {

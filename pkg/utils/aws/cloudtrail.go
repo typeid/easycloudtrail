@@ -9,6 +9,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/cloudtrail"
+	"github.com/fatih/color"
 	"golang.org/x/exp/slices"
 )
 
@@ -48,6 +49,8 @@ func (c *Client) PrintCloudTrailWriteEvents(
 	}
 
 	for _, resource := range resourceARNs {
+		fmt.Println("")
+		fmt.Printf("Looking for write-events on %s...\n", resource.ARN)
 		resourceCopy := resource // Fixes G601
 		lookupInput := &cloudtrail.LookupEventsInput{
 			StartTime: aws.Time(startTime),
@@ -203,7 +206,7 @@ func printEventNonRaw(
 		accumulatingString += fmt.Sprintf(" | EventID: %s", aws.StringValue(event.EventId))
 	}
 
-	fmt.Println(accumulatingString)
+	fmt.Println(color.GreenString(accumulatingString))
 
 	return nil
 }
