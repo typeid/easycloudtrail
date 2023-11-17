@@ -15,9 +15,9 @@ test:
 .PHONY: build_all
 build_all:
 	echo "Compiling for every OS and Platform"
-	GOOS=freebsd GOARCH=386 go build -o bin/cloudtrailctl-freebsd-386 main.go
-	GOOS=linux GOARCH=386 go build -o bin/cloudtrailctl-linux-386 main.go
-	GOOS=windows GOARCH=386 go build -o bin/cloudtrailctl-windows-386 main.go
+	GOOS=freebsd GOARCH=386 go build -o bin/easycloudtrail-freebsd-386 main.go
+	GOOS=linux GOARCH=386 go build -o bin/easycloudtrail-linux-386 main.go
+	GOOS=windows GOARCH=386 go build -o bin/easycloudtrail-windows-386 main.go
 
 .PHONY: lint
 lint:
